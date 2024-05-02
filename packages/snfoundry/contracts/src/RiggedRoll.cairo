@@ -69,6 +69,7 @@ mod RiggedRoll {
             let array = array![prev_block, self.dice_game.read().nonce()];
             let predicted_roll = keccak_u256s_le_inputs(array.span()) % 16;
             self.predicted_roll.write(predicted_roll);
+            let predicted_roll = self.predicted_roll.read();
 
             if (predicted_roll <= 5) {
                 self
