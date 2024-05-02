@@ -63,7 +63,7 @@ mod RiggedRoll {
                 .dice_game
                 .read()
                 .eth_token()
-                .transferFrom(get_caller_address(), get_contract_address(), 2000000000000000);
+                .transferFrom(get_caller_address(), get_contract_address(), 200000000000000000);
 
             let prev_block: u256 = get_block_number().into() - 1;
             let array = array![prev_block, self.dice_game.read().nonce()];
@@ -76,10 +76,14 @@ mod RiggedRoll {
                     .dice_game
                     .read()
                     .eth_token()
-                    .approve(self.dice_game.read().contract_address, 2000000000000000);
-                self.dice_game.read().roll_dice(2000000000000000);
+                    .approve(self.dice_game.read().contract_address, 200000000000000000);
+                self.dice_game.read().roll_dice(200000000000000000);
             } else {
-                assert(false, 'Predicted roll was too high');
+            self
+                .dice_game
+                .read()
+                .eth_token()
+                .transfer(get_caller_address(), 200000000000000000);
             }
         }
         fn withdraw(ref self: ContractState, to: ContractAddress, amount: u256) {
