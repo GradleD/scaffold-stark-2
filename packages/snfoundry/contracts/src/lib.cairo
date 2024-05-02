@@ -1,1 +1,2 @@
 mod DiceGame;
+mod RiggedRoll;
