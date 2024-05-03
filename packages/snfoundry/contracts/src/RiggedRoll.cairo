@@ -2,10 +2,11 @@ use starknet::ContractAddress;
 
 #[starknet::interface]
 pub trait IRiggedRoll<T> {
-    fn rigged_roll(ref self: T);
+    fn rigged_roll(ref self: T, amount: u256);
     fn withdraw(ref self: T, to: ContractAddress, amount: u256);
     fn last_dice_value(self: @T) -> u256;
     fn predicted_roll(self: @T) -> u256;
+    fn dice_game(self: @T) -> ContractAddress;
 }
 
 #[starknet::contract]
@@ -50,7 +51,7 @@ mod RiggedRoll {
 
     #[abi(embed_v0)]
     impl RiggedRollImpl of super::IRiggedRoll<ContractState> {
-        fn rigged_roll(ref self: ContractState) {
+        fn rigged_roll(ref self: ContractState, amount: u256) {
             let contract_balance = self
                 .dice_game
                 .read()
@@ -63,7 +64,7 @@ mod RiggedRoll {
                 .dice_game
                 .read()
                 .eth_token()
-                .transferFrom(get_caller_address(), get_contract_address(), 200000000000000000);
+                .transferFrom(get_caller_address(), get_contract_address(), amount);
 
             let prev_block: u256 = get_block_number().into() - 1;
             let array = array![prev_block, self.dice_game.read().nonce()];
@@ -76,14 +77,10 @@ mod RiggedRoll {
                     .dice_game
                     .read()
                     .eth_token()
-                    .approve(self.dice_game.read().contract_address, 200000000000000000);
-                self.dice_game.read().roll_dice(200000000000000000);
+                    .approve(self.dice_game.read().contract_address, amount);
+                self.dice_game.read().roll_dice(amount);
             } else {
-            self
-                .dice_game
-                .read()
-                .eth_token()
-                .transfer(get_caller_address(), 200000000000000000);
+                self.dice_game.read().eth_token().transfer(get_caller_address(), amount);
             }
         }
         fn withdraw(ref self: ContractState, to: ContractAddress, amount: u256) {
@@ -101,6 +98,9 @@ mod RiggedRoll {
         }
         fn predicted_roll(self: @ContractState) -> u256 {
             self.predicted_roll.read()
+        }
+        fn dice_game(self: @ContractState) -> ContractAddress {
+            self.dice_game.read().contract_address
         }
     }
 }
