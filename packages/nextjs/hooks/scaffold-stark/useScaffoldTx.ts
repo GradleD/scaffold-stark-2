@@ -36,6 +36,31 @@ export const useScaffoldTx = ({
     });
   }, [targetNetwork.rpcUrls.public.http]);
 
+   const useDataTransaction = ({
+    blockNumber,
+    watch = false,
+    enabled = true,
+  }: {
+    blockNumber?: number;
+    watch?: boolean;
+    enabled?: boolean;
+  }) => {
+    const [transactions, setTransactions] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | undefined>(undefined);
+    const [transactionCount, setTransactionCount] = useState<number | undefined>(undefined);
+    const [starknetVersion, setStarknetVersion] = useState<string | undefined>(undefined);
+  
+    const { targetNetwork } = useTargetNetwork();
+  
+    // Initialize the provider with the RPC node URL
+    const publicClient = useMemo(() => {
+      return new RpcProvider({
+        nodeUrl: targetNetwork.rpcUrls.public.http[0],
+      });
+    }, [targetNetwork.rpcUrls.public.http]);
+  }
+
   // Función para obtener las transacciones de un bloque
   const readTransactionsFromBlock = async (blockNumber: number) => {
     setIsLoading(true);
@@ -108,4 +133,5 @@ export const useScaffoldTx = ({
     isLoading,
     error,
   };
+
 };
